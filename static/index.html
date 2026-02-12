@@ -172,7 +172,7 @@
     <h1>🏂 SHRED RUN 🏂</h1>
     <p>Shred the gnar & dodge obstacles to reach the bottom</p>
     <button id="start-btn">DROP IN!</button>
-    <div class="instructions">← → Arrow keys or touch to steer</div>
+    <div class="instructions" id="control-hint"></div>
   </div>
 
   <div id="overlay">
@@ -285,6 +285,7 @@ function updateTouchAnalog(pos) {
 
 // --- Device detection ---
 let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+document.getElementById('control-hint').textContent = isMobile ? 'Touch to steer' : '← → Arrow keys to steer';
 
 // --- Responsive sizing handled by CSS ---
 
