@@ -34,12 +34,18 @@
     position: relative;
     width: 480px;
     height: 720px;
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: 480 / 720;
   }
 
   canvas {
     display: block;
+    width: 100%;
+    height: 100%;
     border-radius: 12px;
     box-shadow: 0 0 60px rgba(232, 67, 147, 0.3), 0 8px 32px rgba(0,0,0,0.5);
+    touch-action: none;
   }
 
   #start-screen {
@@ -156,7 +162,7 @@
     <h1>🏂 SHRED RUN 🏂</h1>
     <p>Shred the gnar & dodge obstacles to reach the bottom</p>
     <button id="start-btn">DROP IN!</button>
-    <div class="instructions">← → Arrow keys to steer</div>
+    <div class="instructions">← → Arrow keys or touch to steer</div>
   </div>
 
   <div id="overlay">
@@ -203,6 +209,83 @@ window.addEventListener('keydown', e => {
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
+
+// --- Touch Input ---
+let touchActive = false;
+let touchX = 0;
+let touchY = 0;
+
+function getTouchPos(e) {
+  let touch = e.touches[0] || e.changedTouches[0];
+  if (!touch) return null;
+  let rect = canvas.getBoundingClientRect();
+  return {
+    x: (touch.clientX - rect.left) / rect.width * W,
+    y: (touch.clientY - rect.top) / rect.height * H
+  };
+}
+
+canvas.addEventListener('touchstart', e => {
+  if (state === 'menu') return; // let clicks through to start button
+  e.preventDefault();
+  touchActive = true;
+  let pos = getTouchPos(e);
+  if (!pos) return;
+  touchX = pos.x;
+  touchY = pos.y;
+  updateTouchKeys();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  if (state === 'menu') return;
+  e.preventDefault();
+  if (!touchActive) return;
+  let pos = getTouchPos(e);
+  if (!pos) return;
+  touchX = pos.x;
+  touchY = pos.y;
+  updateTouchKeys();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  if (state === 'menu') return;
+  e.preventDefault();
+  touchActive = false;
+  keys['ArrowLeft'] = false;
+  keys['ArrowRight'] = false;
+  keys['ArrowUp'] = false;
+  keys['ArrowDown'] = false;
+}, { passive: false });
+
+function updateTouchKeys() {
+  if (player.x == null) return;
+  // Steer based on touch position relative to player
+  let dx = touchX - player.x;
+  let dy = touchY - player.y;
+  let deadzone = 20;
+
+  keys['ArrowLeft'] = dx < -deadzone;
+  keys['ArrowRight'] = dx > deadzone;
+  keys['ArrowUp'] = dy < -deadzone;
+  keys['ArrowDown'] = dy > deadzone;
+}
+
+// --- Responsive sizing ---
+function resizeGame() {
+  let wrapper = document.getElementById('game-wrapper');
+  let maxW = window.innerWidth;
+  let maxH = window.innerHeight;
+  let scale = Math.min(maxW / 480, maxH / 720);
+  if (scale < 1) {
+    wrapper.style.width = Math.floor(480 * scale) + 'px';
+    wrapper.style.height = Math.floor(720 * scale) + 'px';
+  } else {
+    wrapper.style.width = '480px';
+    wrapper.style.height = '720px';
+  }
+}
+window.addEventListener('resize', resizeGame);
+resizeGame();
 
 // --- Start ---
 startBtn.addEventListener('click', () => {
