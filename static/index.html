@@ -1406,7 +1406,8 @@ let rescuePlayerOnBoard = false;
 
 function showWipeout() {
   overlayTitle.textContent = '💥 WIPEOUT! 💥';
-  overlayText.innerHTML = "Tough run!<br><br><span style='font-size:14px;opacity:0.7'>Press any key or click to call ski patrol</span>";
+  let retryHint = isMobile ? 'Tap to call ski patrol' : 'Press any key or click to call ski patrol';
+  overlayText.innerHTML = "Tough run!<br><br><span style='font-size:14px;opacity:0.7'>" + retryHint + "</span>";
   setTimeout(() => {
     overlay.classList.add('visible');
     let callPatrol = () => {
