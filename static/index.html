@@ -30,6 +30,14 @@
     overflow: hidden;
   }
 
+  @media (max-height: 740px), (max-width: 500px) {
+    body {
+      align-items: flex-start;
+      padding: 0;
+      min-height: 100dvh;
+    }
+  }
+
   #game-wrapper {
     position: relative;
     width: 480px;
@@ -277,15 +285,13 @@ function updateTouchAnalog(pos) {
 function resizeGame() {
   let wrapper = document.getElementById('game-wrapper');
   let maxW = window.innerWidth;
-  let maxH = window.innerHeight;
+  let maxH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
   let scale = Math.min(maxW / 480, maxH / 720);
-  if (scale < 1) {
-    wrapper.style.width = Math.floor(480 * scale) + 'px';
-    wrapper.style.height = Math.floor(720 * scale) + 'px';
-  } else {
-    wrapper.style.width = '480px';
-    wrapper.style.height = '720px';
-  }
+  wrapper.style.width = Math.floor(480 * Math.min(scale, 1)) + 'px';
+  wrapper.style.height = Math.floor(720 * Math.min(scale, 1)) + 'px';
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resizeGame);
 }
 window.addEventListener('resize', resizeGame);
 resizeGame();
