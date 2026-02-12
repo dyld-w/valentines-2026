@@ -283,6 +283,9 @@ function updateTouchAnalog(pos) {
   touchDY = pos.y - player.y;
 }
 
+// --- Device detection ---
+let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
 // --- Responsive sizing handled by CSS ---
 
 // --- Start ---
@@ -1374,7 +1377,8 @@ function updateChoosing(dt) {
   let px = player.x;
   let py = player.y;
 
-  if (py > gateScreenY && py < gateScreenY + 60) {
+  // Desktop: steer into gates to select. Mobile: tap only (handled in touchstart).
+  if (!isMobile && py > gateScreenY && py < gateScreenY + 60) {
     if (px > 40 && px < 200) {
       state = 'yes';
       spawnHearts(W / 2, H / 2);
@@ -1792,7 +1796,8 @@ function draw() {
     ctx.fillStyle = 'white';
     ctx.font = "bold 14px 'Nunito', sans-serif";
     ctx.textAlign = 'center';
-    ctx.fillText('⬅ ⬆ ⬇ ➡  Steer to your answer!', W / 2, 42);
+    let hintMsg = isMobile ? 'Tap YES or NO to answer!' : '⬅ ⬆ ⬇ ➡  Steer to your answer!';
+    ctx.fillText(hintMsg, W / 2, 42);
   }
 
   // HUD — distance meter
