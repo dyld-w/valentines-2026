@@ -212,8 +212,8 @@ window.addEventListener('keyup', e => keys[e.key] = false);
 
 // --- Touch Input ---
 let touchActive = false;
-let touchX = 0;
-let touchY = 0;
+let touchDX = 0; // analog touch offset from player
+let touchDY = 0;
 
 function getTouchPos(e) {
   let touch = e.touches[0] || e.changedTouches[0];
@@ -226,14 +226,28 @@ function getTouchPos(e) {
 }
 
 canvas.addEventListener('touchstart', e => {
-  if (state === 'menu') return; // let clicks through to start button
+  if (state === 'menu') return;
   e.preventDefault();
   touchActive = true;
   let pos = getTouchPos(e);
   if (!pos) return;
-  touchX = pos.x;
-  touchY = pos.y;
-  updateTouchKeys();
+  updateTouchAnalog(pos);
+  // Tap detection for choosing state — check if tapping a gate
+  if (state === 'choosing') {
+    let gateScreenY = (QUESTION_ZONE - scrollY) + 240;
+    if (pos.y > gateScreenY && pos.y < gateScreenY + 60) {
+      if (pos.x > 40 && pos.x < 200) {
+        state = 'yes';
+        spawnHearts(W / 2, H / 2);
+        showYes();
+        return;
+      } else if (pos.x > 280 && pos.x < 440) {
+        state = 'no';
+        showNo();
+        return;
+      }
+    }
+  }
 }, { passive: false });
 
 canvas.addEventListener('touchmove', e => {
@@ -242,32 +256,21 @@ canvas.addEventListener('touchmove', e => {
   if (!touchActive) return;
   let pos = getTouchPos(e);
   if (!pos) return;
-  touchX = pos.x;
-  touchY = pos.y;
-  updateTouchKeys();
+  updateTouchAnalog(pos);
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
   if (state === 'menu') return;
   e.preventDefault();
   touchActive = false;
-  keys['ArrowLeft'] = false;
-  keys['ArrowRight'] = false;
-  keys['ArrowUp'] = false;
-  keys['ArrowDown'] = false;
+  touchDX = 0;
+  touchDY = 0;
 }, { passive: false });
 
-function updateTouchKeys() {
+function updateTouchAnalog(pos) {
   if (player.x == null) return;
-  // Steer based on touch position relative to player
-  let dx = touchX - player.x;
-  let dy = touchY - player.y;
-  let deadzone = 20;
-
-  keys['ArrowLeft'] = dx < -deadzone;
-  keys['ArrowRight'] = dx > deadzone;
-  keys['ArrowUp'] = dy < -deadzone;
-  keys['ArrowDown'] = dy > deadzone;
+  touchDX = pos.x - player.x;
+  touchDY = pos.y - player.y;
 }
 
 // --- Responsive sizing ---
@@ -1277,7 +1280,12 @@ function updatePlaying(dt) {
   // Steer
   let accel = 0.35;
   let friction = 0.88;
-  if (keys['ArrowLeft']) { player.vx -= accel * dt; player.tilt = Math.max(player.tilt - 0.1 * dt, -1); }
+  if (touchActive && (touchDX !== 0)) {
+    // Analog touch — scale force by distance, capped
+    let force = Math.max(-1, Math.min(1, touchDX / 80));
+    player.vx += force * accel * 2.2 * dt;
+    player.tilt = Math.max(-1, Math.min(1, force));
+  } else if (keys['ArrowLeft']) { player.vx -= accel * dt; player.tilt = Math.max(player.tilt - 0.1 * dt, -1); }
   else if (keys['ArrowRight']) { player.vx += accel * dt; player.tilt = Math.min(player.tilt + 0.1 * dt, 1); }
   else { player.tilt *= 0.9; }
 
@@ -1338,12 +1346,20 @@ function updateChoosing(dt) {
 
   if (!player.vy) player.vy = 0;
 
-  if (keys['ArrowLeft']) { player.vx -= accel * dt; player.tilt = Math.max(player.tilt - 0.1 * dt, -1); }
-  else if (keys['ArrowRight']) { player.vx += accel * dt; player.tilt = Math.min(player.tilt + 0.1 * dt, 1); }
-  else { player.tilt *= 0.9; }
+  if (touchActive && (touchDX !== 0 || touchDY !== 0)) {
+    let forceX = Math.max(-1, Math.min(1, touchDX / 80));
+    let forceY = Math.max(-1, Math.min(1, touchDY / 80));
+    player.vx += forceX * accel * 2.2 * dt;
+    player.vy += forceY * yAccel * 2.2 * dt;
+    player.tilt = Math.max(-1, Math.min(1, forceX));
+  } else {
+    if (keys['ArrowLeft']) { player.vx -= accel * dt; player.tilt = Math.max(player.tilt - 0.1 * dt, -1); }
+    else if (keys['ArrowRight']) { player.vx += accel * dt; player.tilt = Math.min(player.tilt + 0.1 * dt, 1); }
+    else { player.tilt *= 0.9; }
 
-  if (keys['ArrowDown']) { player.vy += yAccel * dt; }
-  else if (keys['ArrowUp']) { player.vy -= yAccel * dt; }
+    if (keys['ArrowDown']) { player.vy += yAccel * dt; }
+    else if (keys['ArrowUp']) { player.vy -= yAccel * dt; }
+  }
 
   player.vx *= friction;
   player.vy *= yFriction;
