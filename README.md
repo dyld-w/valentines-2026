@@ -1,6 +1,8 @@
 # 🏂 Shred Run — Valentine's Edition
 
-A snowboarding mini-game where you dodge trees, rocks, and tiny skiers to reach the bottom of the slope and answer the big question.
+A lil AI slop coded Valentine's game for my girlfriend 💕
+
+Snowboarding mini-game where you dodge trees, rocks, and tiny skiers to reach the bottom of the slope and answer the big question.
 
 ## Play Online
 
