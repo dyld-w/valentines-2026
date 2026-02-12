@@ -87,6 +87,41 @@
     font-weight: 700;
   }
 
+  #difficulty-select {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .diff-btn {
+    font-family: 'Bangers', cursive;
+    font-size: 16px;
+    letter-spacing: 1px;
+    padding: 8px 14px;
+    border: 3px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 90px;
+  }
+
+  .diff-btn:hover { transform: translateY(-2px); }
+  .diff-btn:active { transform: translateY(1px); }
+  .diff-btn.selected { border-color: white; }
+
+  .diff-btn.green { background: #27ae60; color: white; box-shadow: 0 3px 0 #1e8449; }
+  .diff-btn.blue { background: #2980b9; color: white; box-shadow: 0 3px 0 #1a5276; }
+  .diff-btn.black { background: #1a1a2e; color: white; box-shadow: 0 3px 0 #000; }
+
+  .diff-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+
   #start-btn {
     font-family: 'Bangers', cursive;
     font-size: 28px;
@@ -171,6 +206,11 @@
   <div id="start-screen">
     <h1>🏂 SHRED RUN 🏂</h1>
     <p>Shred the gnar & dodge obstacles to reach the bottom</p>
+    <div id="difficulty-select">
+      <button class="diff-btn green" data-diff="green"><span class="diff-icon">●</span>Easy</button>
+      <button class="diff-btn blue selected" data-diff="blue"><span class="diff-icon">■</span>Medium</button>
+      <button class="diff-btn black" data-diff="black"><span class="diff-icon">◆</span>Hard</button>
+    </div>
     <button id="start-btn">DROP IN!</button>
     <div class="instructions" id="control-hint"></div>
   </div>
@@ -200,6 +240,51 @@ let state = 'menu'; // menu | playing | question | yes | no | lift
 let scrollY = 0;
 const TOTAL_SLOPE_LENGTH = 6000;
 const QUESTION_ZONE = TOTAL_SLOPE_LENGTH - 600;
+
+// --- Difficulty Settings ---
+let selectedDifficulty = 'blue';
+const DIFFICULTY = {
+  green: {
+    maxSpeed: 3.0,
+    accelRate: 0.012,
+    steerAccel: 0.35,
+    steerAccelChoose: 0.4,
+    obstacleSpacing: 65,
+    maxPerRow: 1,
+    doubleChance: 0.15,
+    tripleChance: 0,
+    health: 3,
+    hitRadiusMod: 0.85,
+    crashTime: 25,
+  },
+  blue: {
+    maxSpeed: 3.8,
+    accelRate: 0.015,
+    steerAccel: 0.35,
+    steerAccelChoose: 0.4,
+    obstacleSpacing: 45,
+    maxPerRow: 2,
+    doubleChance: 0.3,
+    tripleChance: 0.1,
+    health: 3,
+    hitRadiusMod: 1.0,
+    crashTime: 30,
+  },
+  black: {
+    maxSpeed: 4.8,
+    accelRate: 0.022,
+    steerAccel: 0.35,
+    steerAccelChoose: 0.4,
+    obstacleSpacing: 32,
+    maxPerRow: 3,
+    doubleChance: 0.45,
+    tripleChance: 0.2,
+    health: 3,
+    hitRadiusMod: 1.15,
+    crashTime: 35,
+  }
+};
+let diff = DIFFICULTY[selectedDifficulty];
 
 let player = {};
 let obstacles = [];
@@ -289,6 +374,16 @@ document.getElementById('control-hint').textContent = isMobile ? 'Touch to steer
 
 // --- Responsive sizing handled by CSS ---
 
+// --- Difficulty Selection ---
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedDifficulty = btn.dataset.diff;
+    diff = DIFFICULTY[selectedDifficulty];
+  });
+});
+
 // --- Start ---
 startBtn.addEventListener('click', () => {
   startScreen.style.display = 'none';
@@ -299,8 +394,8 @@ function initGame() {
   state = 'playing';
   scrollY = 0;
   crashTimer = 0;
-  health = 3;
-  player = { x: W / 2, y: 200, vx: 0, speed: 0, maxSpeed: 3.8, tilt: 0, trail: [] };
+  health = diff.health;
+  player = { x: W / 2, y: 200, vx: 0, speed: 0, maxSpeed: diff.maxSpeed, tilt: 0, trail: [] };
   obstacles = [];
   particles = [];
   hearts = [];
@@ -313,10 +408,10 @@ function initGame() {
 function generateObstacles() {
   obstacles = [];
   // Trees and small skiers spread across the slope
-  for (let y = 400; y < QUESTION_ZONE - 200; y += 45) {
-    // 1-3 obstacles per row band
-    let count = Math.random() < 0.3 ? 2 : 1;
-    if (Math.random() < 0.1) count = 3;
+  for (let y = 400; y < QUESTION_ZONE - 200; y += diff.obstacleSpacing) {
+    let count = Math.random() < diff.doubleChance ? 2 : 1;
+    if (Math.random() < diff.tripleChance) count = 3;
+    count = Math.min(count, diff.maxPerRow);
     for (let i = 0; i < count; i++) {
       let ox = 40 + Math.random() * (W - 80);
       let r = Math.random();
@@ -1262,7 +1357,7 @@ function gameLoop(timestamp) {
 
 function updatePlaying(dt) {
   // Gravity / auto-scroll
-  player.speed = Math.min(player.speed + 0.015 * dt, player.maxSpeed);
+  player.speed = Math.min(player.speed + diff.accelRate * dt, player.maxSpeed);
 
   if (crashTimer > 0) {
     crashTimer -= dt;
@@ -1277,7 +1372,7 @@ function updatePlaying(dt) {
   scrollY += player.speed * dt;
 
   // Steer
-  let accel = 0.35;
+  let accel = diff.steerAccel;
   let friction = 0.88;
   if (touchActive && (touchDX !== 0)) {
     // Analog touch — scale force by distance, capped
@@ -1308,10 +1403,11 @@ function updatePlaying(dt) {
     let dx = player.x - ob.x;
     let dy = player.y - screenOY;
     let dist = Math.sqrt(dx * dx + dy * dy);
-    let hitRadius = ob.type === 'tree' ? 18 : ob.type === 'rock' ? 16 : 16;
+    let baseRadius = ob.type === 'tree' ? 18 : ob.type === 'rock' ? 16 : 16;
+    let hitRadius = baseRadius * diff.hitRadiusMod;
     if (dist < hitRadius) {
       ob.hit = true;
-      crashTimer = 30;
+      crashTimer = diff.crashTime;
       player.speed = 0;
       player.vx = 0;
       health--;
@@ -1338,9 +1434,9 @@ function updatePlaying(dt) {
 
 function updateChoosing(dt) {
   // Free movement with all arrow keys — no scrolling
-  let accel = 0.4;
+  let accel = diff.steerAccelChoose;
   let friction = 0.88;
-  let yAccel = 0.35;
+  let yAccel = diff.steerAccelChoose;
   let yFriction = 0.88;
 
   if (!player.vy) player.vy = 0;
@@ -1815,7 +1911,7 @@ function draw() {
     ctx.fillText('🏂 ' + Math.floor(progress * 100) + '%', 24, 35);
 
     // Health hearts
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < diff.health; i++) {
       let hx = W - 40 - i * 36;
       let hy = 18;
       if (i < health) {
